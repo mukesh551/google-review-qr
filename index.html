@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Google Review QR Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1d2330;--mut:#667085;--acc:#1a73e8;--line:#e3e6ec}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px;display:grid;gap:20px;grid-template-columns:1fr 1fr}
+  @media(max-width:760px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  h1{grid-column:1/-1;margin:0;font-size:22px}
+  label{display:block;font-size:13px;color:var(--mut);margin:14px 0 4px}
+  input,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  button{margin-top:16px;padding:10px 16px;border:0;border-radius:8px;background:var(--acc);color:#fff;font:inherit;cursor:pointer}
+  button.sec{background:#eef2f9;color:var(--ink)}
+  .hint{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.5}
+  #poster{text-align:center}
+  #poster h2{margin:0 0 4px;font-size:26px}
+  .stars{color:#f9ab00;font-size:34px;letter-spacing:4px}
+  #qr img{width:260px;height:260px;margin:12px auto;display:block}
+  #url{word-break:break-all;font-size:11px;color:var(--mut)}
+  @media print{body{background:#fff}.wrap>*:not(#posterCard){display:none}#posterCard{border:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Google Review QR Generator</h1>
+  <div class="card">
+    <label>Business naam</label>
+    <input id="name" placeholder="Meri Dukaan">
+    <label>Google Place ID (ya direct review link)</label>
+    <input id="pid" placeholder="ChIJ... ya https://g.page/r/.../review">
+    <div class="hint">Place ID yahan se milega: <a target="_blank" href="https://developers.google.com/maps/documentation/places/web-service/place-id">Place ID Finder</a> — apna business search karo. Agar Google Business Profile me "Get more reviews" ka short link hai (g.page/r/.../review), woh seedha paste kar sakte ho.</div>
+    <label>Keywords (comma se alag, e.g. best misal in Pune, filter coffee)</label>
+    <input id="kw" placeholder="keyword1, keyword2">
+    <label>Owner WhatsApp number (optional, low rating feedback ke liye, country code ke saath)</label>
+    <input id="wa" placeholder="919876543210">
+    <label>Review helper page ka URL (review.html jahan host hai)</label>
+    <input id="base" placeholder="https://yoursite.com/review.html">
+    <div class="hint">Khaali chhodo to seedha Google review form ka QR banega (star/text helper ke bina). Phone se test ke liye PC ka LAN IP use karo, localhost nahi.</div>
+    <label>Poster ka message</label>
+    <textarea id="msg" rows="2">Hamari service kaisi lagi? Scan karke 5 star ke saath review dijiye!</textarea>
+    <button onclick="gen()">QR banao</button>
+    <button class="sec" onclick="window.print()">Print poster</button>
+    <button class="sec" onclick="dl()">PNG download</button>
+  </div>
+  <div class="card" id="posterCard">
+    <div id="poster">
+      <h2 id="pName">Business Naam</h2>
+      <div class="stars">★★★★★</div>
+      <div id="pMsg" class="hint" style="font-size:15px;color:var(--ink)"></div>
+      <div id="qr"></div>
+      <div id="url"></div>
+    </div>
+  </div>
+</div>
+<script>
+let link='';
+function build(v){
+  v=v.trim();
+  if(/^https?:\/\//i.test(v)) return v;
+  return 'https://search.google.com/local/writereview?placeid='+encodeURIComponent(v);
+}
+function gen(){
+  const v=document.getElementById('pid').value;
+  if(!v.trim()){alert('Place ID ya review link daalo');return}
+  const base=document.getElementById('base').value.trim();
+  if(base){
+    const p=new URLSearchParams({pid:v.trim(),name:document.getElementById('name').value||'Our Business'});
+    const kw=document.getElementById('kw').value.trim(), wa=document.getElementById('wa').value.trim();
+    if(kw)p.set('kw',kw); if(wa)p.set('contact',wa);
+    link=base+(base.includes('?')?'&':'?')+p.toString();
+  } else link=build(v);
+  const q=qrcode(0,'M'); q.addData(link); q.make();
+  document.getElementById('qr').innerHTML=q.createImgTag(8,8);
+  document.getElementById('pName').textContent=document.getElementById('name').value||'Business Naam';
+  document.getElementById('pMsg').textContent=document.getElementById('msg').value;
+  document.getElementById('url').textContent=link;
+}
+function dl(){
+  const img=document.querySelector('#qr img'); if(!img){alert('Pehle QR banao');return}
+  const a=document.createElement('a'); a.href=img.src; a.download='google-review-qr.png'; a.click();
+}
+</script>
+</body>
+</html>

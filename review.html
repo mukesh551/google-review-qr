@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review</title>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1d2330;--mut:#667085;--acc:#1a73e8;--line:#e3e6ec;--star:#f9ab00}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  .box{max-width:460px;margin:0 auto;padding:20px 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:14px}
+  h1{margin:0 0 4px;font-size:22px;text-align:center}
+  .sub{text-align:center;color:var(--mut);font-size:14px;margin-bottom:14px}
+  .stars{display:flex;justify-content:center;gap:6px}
+  .stars button{background:none;border:0;font-size:44px;line-height:1;color:#d0d5dd;cursor:pointer;padding:2px}
+  .stars button.on{color:var(--star)}
+  .lang{display:flex;gap:8px;justify-content:center;margin:10px 0}
+  .lang button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 14px;font:inherit;cursor:pointer}
+  .lang button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .opt{border:2px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;font-size:15px;line-height:1.45}
+  .opt.sel{border-color:var(--acc);background:#eef4ff}
+  textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;min-height:90px}
+  .go{display:block;width:100%;padding:14px;border:0;border-radius:12px;background:var(--acc);color:#fff;font:inherit;font-size:16px;cursor:pointer;margin-top:10px}
+  .go:disabled{opacity:.5}
+  .hint{font-size:12px;color:var(--mut);text-align:center;margin-top:8px;line-height:1.5}
+  .priv a{color:var(--acc)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="card">
+    <h1 id="biz">Your Business</h1>
+    <div class="sub" id="ask">How was your experience?</div>
+    <div class="stars" id="stars"></div>
+  </div>
+
+  <div class="card hide" id="step2">
+    <div class="lang" id="lang"></div>
+    <div id="opts"></div>
+    <div class="sub" style="margin:6px 0">Edit karke apne shabd bhi daal sakte ho / You can edit</div>
+    <textarea id="txt"></textarea>
+    <button class="go" id="go">Copy &amp; open Google</button>
+    <div class="hint" id="note">Review copy ho jaayega. Google page par stars chun kar text paste karein (long-press → Paste).</div>
+  </div>
+
+  <div class="hint priv" id="priv"></div>
+</div>
+<script>
+const P=new URLSearchParams(location.search);
+const pid=(P.get('pid')||'').trim();
+const biz=P.get('name')||'Our Business';
+const kws=(P.get('kw')||'').split(',').map(s=>s.trim()).filter(Boolean);
+const contact=(P.get('contact')||'').replace(/\D/g,'');
+document.title=biz+' – Review';
+document.getElementById('biz').textContent=biz;
+
+const gLink=/^https?:/i.test(pid)?pid:'https://search.google.com/local/writereview?placeid='+encodeURIComponent(pid);
+
+const T={
+ en:{ask:'How was your experience?',
+  5:[ '{k} was excellent! Great service and friendly staff at {b}. Highly recommended.',
+      'Loved my visit to {b}. {k}, quality and service were top notch. Will come back!',
+      'Best experience in the area. {b} delivers on {k} every time. 5 stars!' ],
+  4:[ 'Good experience at {b}. {k} was nice and the staff was helpful.',
+      'Happy with {b}. Solid {k} and good service overall.',
+      'Nice place, I liked the {k}. Would visit again.' ],
+  3:[ 'Decent visit to {b}. {k} was okay, a few things could improve.',
+      'Average experience at {b}. Good potential with some improvement.',
+      'It was fine. {k} was acceptable.' ],
+  2:[ 'Experience at {b} was below expectations. {k} needs improvement.',
+      'Not very satisfied with my visit. Service could be better.',
+      'Some issues during my visit to {b}. Hope they improve.' ],
+  1:[ 'Disappointed with my experience at {b}. Needs serious improvement.',
+      'Did not meet expectations. Service and {k} were poor.',
+      'Poor experience at {b}. I hope the owner looks into this.' ]},
+ hi:{ask:'आपका अनुभव कैसा रहा?',
+  5:[ '{b} में {k} बेहतरीन था! स्टाफ बहुत मददगार है। ज़रूर आइए।',
+      '{b} का अनुभव शानदार रहा। {k} और सर्विस दोनों बढ़िया। दोबारा आऊँगा!',
+      'इलाके की सबसे अच्छी जगह। {b} में {k} हर बार लाजवाब। 5 स्टार!' ],
+  4:[ '{b} में अच्छा अनुभव रहा। {k} अच्छा था और स्टाफ मददगार।',
+      '{b} से खुश हूँ। {k} बढ़िया और सर्विस अच्छी।',
+      'अच्छी जगह है, {k} पसंद आया। फिर आऊँगा।' ],
+  3:[ '{b} में अनुभव ठीक-ठाक रहा। {k} ठीक था, कुछ सुधार हो सकता है।',
+      'औसत अनुभव। थोड़ा सुधार हो तो बेहतर होगा।',
+      'ठीक था। {k} चल जाएगा।' ],
+  2:[ '{b} का अनुभव उम्मीद से कम रहा। {k} में सुधार चाहिए।',
+      'मैं ज़्यादा संतुष्ट नहीं हूँ। सर्विस बेहतर हो सकती है।',
+      'कुछ दिक्कतें आईं। उम्मीद है सुधार होगा।' ],
+  1:[ '{b} में निराशाजनक अनुभव रहा। काफ़ी सुधार की ज़रूरत है।',
+      'उम्मीद पर खरा नहीं उतरा। सर्विस और {k} खराब थे।',
+      'बुरा अनुभव रहा। उम्मीद है मालिक ध्यान देंगे।' ]}
+};
+let stars=0,lang='en',sel=-1;
+
+function fill(s){
+  const k=(kws.length&&stars>=4)?kws[Math.floor(Math.random()*kws.length)]:(lang==='hi'?'सर्विस':'the service');
+  const r=s.replace(/\{b\}/g,biz).replace(/\{k\}/g,k);
+  return r.charAt(0).toUpperCase()+r.slice(1);
+}
+function renderStars(){
+  const el=document.getElementById('stars');el.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const b=document.createElement('button');b.textContent='★';
+    b.className=i<=stars?'on':'';b.setAttribute('aria-label',i+' star');
+    b.onclick=()=>{stars=i;renderStars();showOpts();};
+    el.appendChild(b);
+  }
+}
+function renderLang(){
+  const el=document.getElementById('lang');el.innerHTML='';
+  [['en','English'],['hi','हिन्दी']].forEach(([c,n])=>{
+    const b=document.createElement('button');b.textContent=n;b.className=c===lang?'on':'';
+    b.onclick=()=>{lang=c;document.getElementById('ask').textContent=T[c].ask;renderLang();showOpts();};
+    el.appendChild(b);
+  });
+}
+function showOpts(){
+  if(!stars)return;
+  document.getElementById('step2').classList.remove('hide');
+  const list=T[lang][stars].map(fill);
+  const el=document.getElementById('opts');el.innerHTML='';
+  list.forEach((t,i)=>{
+    const d=document.createElement('div');d.className='opt';d.textContent=t;
+    d.onclick=()=>{document.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');document.getElementById('txt').value=t;};
+    el.appendChild(d);
+  });
+  el.firstChild.click();
+  const p=document.getElementById('priv');
+  if(stars<=3 && contact){
+    p.innerHTML='Owner ko seedha batana chahte ho? <a target="_blank" href="https://wa.me/'+contact+'?text='+encodeURIComponent('Feedback for '+biz+' ('+stars+'★): ')+'">WhatsApp feedback</a> (optional — Google review bhi de sakte ho)';
+  } else p.textContent='';
+}
+document.getElementById('go').onclick=async()=>{
+  const t=document.getElementById('txt').value;
+  try{await navigator.clipboard.writeText(t);}catch(e){
+    const ta=document.getElementById('txt');ta.select();document.execCommand('copy');
+  }
+  document.getElementById('note').textContent='Copied ✓ — Google khul raha hai…';
+  setTimeout(()=>{ if(pid) location.href=gLink; else alert('Place ID missing (?pid=...)'); },600);
+};
+renderStars();renderLang();
+</script>
+</body>
+</html>
